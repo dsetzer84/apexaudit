@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ApexAudit AI — project validation (runs in CI as `npm run lint`).
+ * ApexAudit AI \u2014 project validation (runs in CI as `npm run lint`).
  *
  * The production bundle is produced by `vite build` (see `npm run build`).
  * This script is a fast, dependency-free sanity check that the source tree is
@@ -111,6 +111,31 @@ if (existsSync(metaHookPath)) {
   check('useDocumentMeta covers /history route', /'\/history'/.test(hook));
   check('useDocumentMeta covers /compare route', /'\/compare'/.test(hook));
   check('useDocumentMeta derives /compare/:slug title', /ApexAudit AI vs/.test(hook));
+  check('useDocumentMeta sets og:image', /og:image/.test(hook));
+  check('useDocumentMeta sets twitter:image', /twitter:image/.test(hook));
+  check(
+    'useDocumentMeta sets og:image dimensions',
+    /og:image:width/.test(hook) && /og:image:height/.test(hook),
+  );
+  check('useDocumentMeta sets og:image:alt', /og:image:alt/.test(hook));
+  check(
+    'useDocumentMeta resolves per-competitor OG image',
+    /\/og\/\$\{comp\.slug\}\.jpg/.test(hook),
+  );
+}
+
+// 5b. per-route Open Graph images exist under public/og/ (Vite copies to dist/og/)
+const ogDir = join(root, 'public/og');
+const ogImages = [
+  'apexaudit.jpg',
+  'ahrefs.jpg',
+  'surfer-seo.jpg',
+  'semrush.jpg',
+  'clearscope.jpg',
+  'sitechecker.jpg',
+];
+for (const img of ogImages) {
+  check(`public/og/${img} present`, existsSync(join(ogDir, img)));
 }
 
 const appPath = join(root, 'src/App.jsx');
@@ -127,6 +152,10 @@ if (existsSync(indexHtmlPath)) {
   check('index.html has canonical link', /rel="canonical"/.test(html));
   check('index.html has og:title', /property="og:title"/.test(html));
   check('index.html has twitter:card', /name="twitter:card"/.test(html));
+  check(
+    'index.html og:image points at /og/apexaudit.jpg',
+    /property="og:image"[^>]*\/og\/apexaudit\.jpg/.test(html),
+  );
 }
 
 // 6. visible breadcrumb + shared source of truth with the JSON-LD BreadcrumbList
@@ -180,4 +209,4 @@ if (failures.length) {
   console.error(`\nValidation failed: ${failures.length} check(s) did not pass.`);
   process.exit(1);
 }
-console.log(`\nProject OK — ${checks.length}/${checks.length} checks passed.`);
+console.log(`\nProject OK \u2014 ${checks.length}/${checks.length} checks passed.`);

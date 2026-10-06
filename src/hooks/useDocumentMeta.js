@@ -9,6 +9,12 @@ import { COMPETITORS } from '../data/competitors.js';
  * client-side navigation (not just on a hard load), and removes them again
  * when the route no longer defines them so nothing leaks between routes.
  *
+ * Social cards: every route resolves to a real 1200x630 image under
+ * `public/og/` (copied verbatim into `dist/og/` by Vite). The comparison
+ * pages each get their own bespoke card (`/og/<competitor-slug>.jpg`); the
+ * remaining routes share the general ApexAudit card (`/og/apexaudit.jpg`).
+ * OG image URLs must be absolute, so they are prefixed with `SITE_URL`.
+ *
  * Dependency-light by design: the app already injects its JSON-LD by hand in
  * `useSchema`, so this follows the same pattern instead of pulling in
  * `react-helmet-async` for a handful of tags.
@@ -16,7 +22,13 @@ import { COMPETITORS } from '../data/competitors.js';
 
 export const SITE_URL = 'https://apexaudit-ai.vercel.app';
 export const SITE_NAME = 'ApexAudit AI';
-const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+
+/** Social card dimensions \u2014 must match the files committed under public/og/. */
+export const OG_IMAGE_WIDTH = 1200;
+export const OG_IMAGE_HEIGHT = 630;
+
+/** Shared default social card, used by every route without a bespoke one. */
+const DEFAULT_OG_IMAGE_PATH = '/og/apexaudit.jpg';
 
 /** Route table: pathname -> { title, description }. */
 export const ROUTE_META = {
@@ -42,6 +54,17 @@ export const ROUTE_META = {
   },
 };
 
+/**
+ * Route table: pathname -> social card path (relative to the site root).
+ * Comparison detail pages are handled dynamically in `resolveMeta`.
+ */
+export const ROUTE_OG_IMAGE = {
+  '/': DEFAULT_OG_IMAGE_PATH,
+  '/app': DEFAULT_OG_IMAGE_PATH,
+  '/history': DEFAULT_OG_IMAGE_PATH,
+  '/compare': DEFAULT_OG_IMAGE_PATH,
+};
+
 const NOT_FOUND_META = {
   title: '404 - Page not found | ApexAudit AI',
   description:
@@ -52,7 +75,15 @@ const NOT_FOUND_META = {
 export function resolveMeta(pathname) {
   const path = (pathname || '/').replace(/\/+$/, '') || '/';
 
-  if (ROUTE_META[path]) return { ...ROUTE_META[path], path, noindex: false };
+  if (ROUTE_META[path]) {
+    return {
+      ...ROUTE_META[path],
+      path,
+      noindex: false,
+      ogImage: ROUTE_OG_IMAGE[path] || DEFAULT_OG_IMAGE_PATH,
+      ogImageAlt: ROUTE_META[path].title,
+    };
+  }
 
   const match = /^\/compare\/([^/]+)$/.exec(path);
   if (match) {
@@ -63,11 +94,19 @@ export function resolveMeta(pathname) {
         description: `ApexAudit AI vs ${comp.name} compared: pricing, features and verdict. ${comp.tagline}. See which SEO and conversion audit tool fits your team.`,
         path,
         noindex: false,
+        ogImage: `/og/${comp.slug}.jpg`,
+        ogImageAlt: `ApexAudit AI vs ${comp.name} - features, pricing and verdict`,
       };
     }
   }
 
-  return { ...NOT_FOUND_META, path, noindex: true };
+  return {
+    ...NOT_FOUND_META,
+    path,
+    noindex: true,
+    ogImage: DEFAULT_OG_IMAGE_PATH,
+    ogImageAlt: `${SITE_NAME} - page not found`,
+  };
 }
 
 /** Create-or-update a <meta> tag, keyed by name or property. */
@@ -101,6 +140,7 @@ export function useDocumentMeta(pathname) {
   useEffect(() => {
     const meta = resolveMeta(pathname);
     const canonical = `${SITE_URL}${meta.path === '/' ? '/' : meta.path}`;
+    const ogImage = `${SITE_URL}${meta.ogImage}`;
 
     document.title = meta.title;
     setMeta('name', 'description', meta.description);
@@ -113,13 +153,18 @@ export function useDocumentMeta(pathname) {
     setMeta('property', 'og:title', meta.title);
     setMeta('property', 'og:description', meta.description);
     setMeta('property', 'og:url', canonical);
-    setMeta('property', 'og:image', DEFAULT_OG_IMAGE);
+    setMeta('property', 'og:image', ogImage);
+    setMeta('property', 'og:image:type', 'image/jpeg');
+    setMeta('property', 'og:image:width', String(OG_IMAGE_WIDTH));
+    setMeta('property', 'og:image:height', String(OG_IMAGE_HEIGHT));
+    setMeta('property', 'og:image:alt', meta.ogImageAlt);
 
     // Twitter card
     setMeta('name', 'twitter:card', 'summary_large_image');
     setMeta('name', 'twitter:title', meta.title);
     setMeta('name', 'twitter:description', meta.description);
-    setMeta('name', 'twitter:image', DEFAULT_OG_IMAGE);
+    setMeta('name', 'twitter:image', ogImage);
+    setMeta('name', 'twitter:image:alt', meta.ogImageAlt);
   }, [pathname]);
 }
 
