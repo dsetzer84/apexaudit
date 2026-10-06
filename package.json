@@ -1,0 +1,15 @@
+{
+  "name": "apexaudit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ApexAudit AI - audit a website's SEO, speed, UX and copy in seconds, then let AI rewrite the weak spots.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/serve.mjs",
+    "dev": "node scripts/serve.mjs",
+    "lint": "node --check scripts/build.mjs && node --check scripts/serve.mjs"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
