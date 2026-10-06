@@ -15,13 +15,14 @@ A single-page React application built with **Vite**. Paste any URL or landing-pa
 | **Comparison Detail** | `/compare/:slug` | Feature-by-feature matrix + FAQ for Surfer SEO, Ahrefs, Semrush, Clearscope and Sitechecker, with Schema.org JSON-LD (Product, FAQPage, BreadcrumbList) injected dynamically. |
 | **Not found** | `*` | Catch-all 404 page. |
 
+Routing is real (`react-router-dom`), so every view is a shareable deep link. Each route also sets its own `<title>`, `<meta name="description">`, canonical link and Open Graph / Twitter tags via `src/hooks/useDocumentMeta.js`, updated on client-side navigation.
+
 ## Tech stack
 
 - **React 18** — UI
 - **Vite 5** — dev server & production bundler (JSX compiled at build time)
 - **Tailwind CSS 3** — compiled via PostCSS (no CDN)
 - **lucide-react** — icon components (no global `lucide.createIcons()` DOM scan)
-- **react-router-dom 6** — real URL routing (`/app`, `/history`, `/compare/:slug`)
 - **Vercel serverless function** — `api/audit.js` fetches and analyses the target page server-side
 
 ## Getting started
@@ -47,7 +48,7 @@ npm run preview    # serve the production build locally (http://localhost:4173)
 ├── public/
 │   └── favicon.svg
 └── src/
-    ├── main.jsx             # React root (BrowserRouter)
+    ├── main.jsx             # React root
     ├── App.jsx              # <Routes> table, audit orchestration, layout shell
     ├── index.css            # Tailwind directives + glass/glow utilities
     ├── icons.js             # lucide-react icon registry (keyed by legacy names)
@@ -55,12 +56,12 @@ npm run preview    # serve the production build locally (http://localhost:4173)
     │   └── auditClient.js   # calls /api/audit; seeded demo fallback
     ├── components/
     │   ├── Icon.jsx         # <Icon name="sparkles" /> wrapper
-    │   ├── Header.jsx       # NavLink navigation
+    │   ├── Header.jsx
     │   ├── Footer.jsx
-    │   ├── ScrollToTop.jsx  # scroll-to-top on route change
     │   └── AiFixModal.jsx
     ├── hooks/
-    │   └── useSchema.js     # JSON-LD structured data injection
+    │   ├── useSchema.js     # JSON-LD structured data injection
+    │   └── useDocumentMeta.js # per-route title/description/canonical/OG/Twitter
     ├── data/
     │   ├── presetSites.js   # seeded demo audits (stripe.com, linear.app)
     │   └── competitors.js   # comparison funnel data
@@ -70,7 +71,7 @@ npm run preview    # serve the production build locally (http://localhost:4173)
         ├── HistoryDashboard.jsx
         ├── CompareHub.jsx
         ├── CompareDetail.jsx
-        └── NotFound.jsx     # catch-all 404
+        └── NotFound.jsx
 ```
 
 ## Deployment
@@ -113,9 +114,12 @@ page too large.
   seed-based engine is preserved in `src/lib/auditClient.js` as an offline
   fallback (used when the backend is unreachable, e.g. plain `vite dev`), and the
   seeded `stripe.com` / `linear.app` presets remain available as demo data.
-- Routing uses **react-router-dom** (`BrowserRouter`), so `/app`, `/history` and
-  `/compare/:slug` are real, shareable deep links. The Vercel rewrite serves
-  `index.html` for any non-`/api/*` path, so a hard refresh on a deep link works.
+- Routing is real (`react-router-dom`); the Vercel rewrite keeps deep links
+  working while excluding `/api/*`.
+- Per-route document head (title, description, canonical, Open Graph, Twitter)
+  is managed by `src/hooks/useDocumentMeta.js` and updates on every client-side
+  navigation; `index.html` carries sensible static defaults for the initial
+  HTML before hydration.
 
 ## License
 

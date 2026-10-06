@@ -74,8 +74,14 @@ export function useSchema(pathname) {
           document.head.appendChild(script);
         }
         script.textContent = JSON.stringify(schemaData);
+        return;
       }
     }
+
+    // No competitor detail route is active — remove any JSON-LD left over from
+    // a previous route so structured data never leaks between pages.
+    const stale = document.getElementById('jsonld-schema');
+    if (stale) stale.remove();
   }, [pathname]);
 }
 

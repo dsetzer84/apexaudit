@@ -94,6 +94,41 @@ if (existsSync(pkgPath)) {
   }
 }
 
+// 5. per-route document head management (title / description / canonical / OG)
+const metaHookPath = join(root, 'src/hooks/useDocumentMeta.js');
+check('src/hooks/useDocumentMeta.js present', existsSync(metaHookPath));
+if (existsSync(metaHookPath)) {
+  const hook = readFileSync(metaHookPath, 'utf8');
+  check('useDocumentMeta sets document.title', /document\.title\s*=/.test(hook));
+  check('useDocumentMeta sets meta description', /'description'/.test(hook));
+  check('useDocumentMeta sets canonical link', /'canonical'/.test(hook));
+  check(
+    'useDocumentMeta sets Open Graph tags',
+    /og:title/.test(hook) && /og:description/.test(hook),
+  );
+  check('useDocumentMeta sets Twitter card', /twitter:card/.test(hook));
+  check('useDocumentMeta covers /app route', /'\/app'/.test(hook));
+  check('useDocumentMeta covers /history route', /'\/history'/.test(hook));
+  check('useDocumentMeta covers /compare route', /'\/compare'/.test(hook));
+  check('useDocumentMeta derives /compare/:slug title', /ApexAudit AI vs/.test(hook));
+}
+
+const appPath = join(root, 'src/App.jsx');
+if (existsSync(appPath)) {
+  const app = readFileSync(appPath, 'utf8');
+  check('App.jsx uses useDocumentMeta', /useDocumentMeta\(/.test(app));
+  check('App.jsx uses react-router <Routes>', /<Routes>/.test(app));
+  check('App.jsx has a catch-all 404 route', /path="\*"/.test(app));
+}
+
+const indexHtmlPath = join(root, 'index.html');
+if (existsSync(indexHtmlPath)) {
+  const html = readFileSync(indexHtmlPath, 'utf8');
+  check('index.html has canonical link', /rel="canonical"/.test(html));
+  check('index.html has og:title', /property="og:title"/.test(html));
+  check('index.html has twitter:card', /name="twitter:card"/.test(html));
+}
+
 for (const c of checks) {
   console.log(`${c.ok ? 'OK  ' : 'FAIL'}  ${c.label}${c.detail ? '  (' + c.detail + ')' : ''}`);
 }

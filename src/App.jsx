@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
@@ -15,10 +15,11 @@ import NotFound from './pages/NotFound.jsx';
 
 import { runAudit, fallbackAudit } from './lib/auditClient.js';
 import { useSchema } from './hooks/useSchema.js';
+import { useDocumentMeta } from './hooks/useDocumentMeta.js';
 
 export default function App() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
 
   // Audit State
   const [targetUrl, setTargetUrl] = useState('');
@@ -76,9 +77,12 @@ export default function App() {
     navigate('/app');
   };
 
-  // Schema Injection Effect (Product + FAQPage + BreadcrumbList JSON-LD),
-  // derived from the current route so breadcrumbs always match the URL.
-  useSchema(pathname);
+  // Per-route document head (title, description, canonical, OG/Twitter) and
+  // JSON-LD structured data (Product + FAQPage + BreadcrumbList). Both are
+  // driven by the real pathname, so they stay correct on client-side
+  // navigation and on a hard load of a deep link.
+  useDocumentMeta(location.pathname);
+  useSchema(location.pathname);
 
   return (
     <div className="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-black">
