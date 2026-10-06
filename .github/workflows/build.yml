@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Least privilege: the job only needs to read the repo.
+permissions:
+  contents: read
+
 # Cancel superseded runs on the same ref.
 concurrency:
   group: build-${{ github.ref }}
@@ -16,6 +20,7 @@ jobs:
   build:
     name: Build & verify
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,5 +41,8 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: Build & verify
-        run: npm run build && npm run verify
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: npm run verify
