@@ -1,4 +1,5 @@
 import Icon from '../components/Icon.jsx';
+import Breadcrumb from '../components/Breadcrumb.jsx';
 
 export default function AuditDashboard({
   activeAudit,
@@ -11,6 +12,8 @@ export default function AuditDashboard({
 }) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <Breadcrumb className="mb-6" />
+
       {/* Search Header Bar */}
       <div className="glass-card p-4 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-3 w-full md:w-auto">

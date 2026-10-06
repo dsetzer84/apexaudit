@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { COMPETITORS } from '../data/competitors.js';
+import Breadcrumb from '../components/Breadcrumb.jsx';
 
 export default function CompareDetail() {
   const { slug } = useParams();
@@ -7,18 +8,8 @@ export default function CompareDetail() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      {/* Breadcrumbs */}
-      <div className="flex items-center space-x-2 text-xs text-zinc-500 mb-6">
-        <Link to="/" className="hover:text-white">
-          Home
-        </Link>
-        <span>/</span>
-        <Link to="/compare" className="hover:text-white">
-          Comparisons
-        </Link>
-        <span>/</span>
-        <span className="text-zinc-300">ApexAudit vs {comp.name}</span>
-      </div>
+      {/* Breadcrumbs — shared component, same trail as the JSON-LD BreadcrumbList */}
+      <Breadcrumb className="mb-6" />
 
       {/* Headline & Title */}
       <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight mb-4">

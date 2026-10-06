@@ -1,9 +1,12 @@
 import Icon from '../components/Icon.jsx';
+import Breadcrumb from '../components/Breadcrumb.jsx';
 import { PRESET_SITES } from '../data/presetSites.js';
 
 export default function HistoryDashboard({ handleRunAudit }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
+      <Breadcrumb className="mb-6" />
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white mb-2">Pre-Seeded Audit Reports</h1>
         <p className="text-zinc-400 text-sm">

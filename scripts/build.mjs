@@ -129,6 +129,49 @@ if (existsSync(indexHtmlPath)) {
   check('index.html has twitter:card', /name="twitter:card"/.test(html));
 }
 
+// 6. visible breadcrumb + shared source of truth with the JSON-LD BreadcrumbList
+const crumbsLibPath = join(root, 'src/lib/breadcrumbs.js');
+check('src/lib/breadcrumbs.js present', existsSync(crumbsLibPath));
+if (existsSync(crumbsLibPath)) {
+  const lib = readFileSync(crumbsLibPath, 'utf8');
+  check('breadcrumbs.js exports getBreadcrumbs', /export function getBreadcrumbs/.test(lib));
+  check('breadcrumbs.js exports breadcrumbJsonLd', /export function breadcrumbJsonLd/.test(lib));
+  check('breadcrumbs.js builds a BreadcrumbList', /BreadcrumbList/.test(lib));
+  check('breadcrumbs.js covers /compare/:slug', /\\\/compare\\\/\(\[\^\/\]\+\)/.test(lib));
+}
+
+const crumbCompPath = join(root, 'src/components/Breadcrumb.jsx');
+check('src/components/Breadcrumb.jsx present', existsSync(crumbCompPath));
+if (existsSync(crumbCompPath)) {
+  const comp = readFileSync(crumbCompPath, 'utf8');
+  check('Breadcrumb uses <nav aria-label="Breadcrumb">', /aria-label="Breadcrumb"/.test(comp));
+  check('Breadcrumb renders an ordered list', /<ol/.test(comp));
+  check('Breadcrumb marks the current page', /aria-current="page"/.test(comp));
+  check('Breadcrumb consumes the shared trail', /getBreadcrumbs\(/.test(comp));
+}
+
+const schemaHookPath = join(root, 'src/hooks/useSchema.js');
+if (existsSync(schemaHookPath)) {
+  const schema = readFileSync(schemaHookPath, 'utf8');
+  check(
+    'useSchema builds BreadcrumbList from the shared trail',
+    /breadcrumbJsonLd\(/.test(schema) && /from '\.\.\/lib\/breadcrumbs\.js'/.test(schema),
+  );
+}
+
+for (const page of [
+  'src/pages/AuditDashboard.jsx',
+  'src/pages/HistoryDashboard.jsx',
+  'src/pages/CompareHub.jsx',
+  'src/pages/CompareDetail.jsx',
+  'src/pages/NotFound.jsx',
+]) {
+  const p = join(root, page);
+  if (existsSync(p)) {
+    check(`${page} mounts <Breadcrumb>`, /<Breadcrumb\b/.test(readFileSync(p, 'utf8')));
+  }
+}
+
 for (const c of checks) {
   console.log(`${c.ok ? 'OK  ' : 'FAIL'}  ${c.label}${c.detail ? '  (' + c.detail + ')' : ''}`);
 }

@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
+import Breadcrumb from '../components/Breadcrumb.jsx';
 import { COMPETITORS } from '../data/competitors.js';
 
 export default function CompareHub() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
+      <Breadcrumb className="mb-6" />
+
       <div className="text-center max-w-2xl mx-auto mb-12">
         <h1 className="text-3xl font-black text-white mb-3">
           SEO &amp; Audit Tool Comparisons (2026)

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { COMPETITORS } from '../data/competitors.js';
+import { breadcrumbJsonLd } from '../lib/breadcrumbs.js';
 
 /**
  * Injects JSON-LD structured data (@graph of Product + FAQPage + BreadcrumbList)
@@ -7,6 +8,11 @@ import { COMPETITORS } from '../data/competitors.js';
  *
  * The route is derived from the current pathname (react-router `useLocation`),
  * so the BreadcrumbList always reflects the URL the visitor is actually on.
+ *
+ * The BreadcrumbList node is built by `breadcrumbJsonLd()` from
+ * `src/lib/breadcrumbs.js` — the same source of truth the visible
+ * <Breadcrumb> component renders — so the structured data and the on-page
+ * trail can never drift apart.
  */
 export function useSchema(pathname) {
   useEffect(() => {
@@ -41,30 +47,8 @@ export function useSchema(pathname) {
                 },
               })),
             },
-            {
-              '@type': 'BreadcrumbList',
-              itemListElement: [
-                {
-                  '@type': 'ListItem',
-                  position: 1,
-                  name: 'Home',
-                  item: 'https://apexaudit.ai/',
-                },
-                {
-                  '@type': 'ListItem',
-                  position: 2,
-                  name: 'Comparisons',
-                  item: 'https://apexaudit.ai/compare',
-                },
-                {
-                  '@type': 'ListItem',
-                  position: 3,
-                  name: `ApexAudit vs ${comp.name}`,
-                  item: `https://apexaudit.ai/compare/${comp.slug}`,
-                },
-              ],
-            },
-          ],
+            breadcrumbJsonLd(pathname),
+          ].filter(Boolean),
         };
         let script = document.getElementById('jsonld-schema');
         if (!script) {
