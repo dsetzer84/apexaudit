@@ -6,13 +6,14 @@ A single-page React application built with **Vite**. Paste any URL or landing-pa
 
 ## Features
 
-| View | Route (client-side) | Description |
+| View | Route (URL) | Description |
 | :--- | :--- | :--- |
-| **Landing page** | `landing` | Hero, URL scan form, feature grid, live demo triggers. |
-| **Audit Dashboard** | `app` | Live audit engine — sends the URL to the `/api/audit` backend, which fetches and analyses the real page, then renders scores and interactive AI copy rewrites. |
-| **Sample Scans** | `history` | Pre-seeded audit reports for baseline SaaS applications. |
-| **Comparison Hub** | `compare-hub` | Lists competitor alternatives. |
-| **Comparison Detail** | `compare-detail/<slug>` | Feature-by-feature matrix + FAQ for Surfer SEO, Ahrefs, Semrush, Clearscope and Sitechecker, with Schema.org JSON-LD (Product, FAQPage, BreadcrumbList) injected dynamically. |
+| **Landing page** | `/` | Hero, URL scan form, feature grid, live demo triggers. |
+| **Audit Dashboard** | `/app` | Live audit engine — sends the URL to the `/api/audit` backend, which fetches and analyses the real page, then renders scores and interactive AI copy rewrites. |
+| **Sample Scans** | `/history` | Pre-seeded audit reports for baseline SaaS applications. |
+| **Comparison Hub** | `/compare` | Lists competitor alternatives. |
+| **Comparison Detail** | `/compare/:slug` | Feature-by-feature matrix + FAQ for Surfer SEO, Ahrefs, Semrush, Clearscope and Sitechecker, with Schema.org JSON-LD (Product, FAQPage, BreadcrumbList) injected dynamically. |
+| **Not found** | `*` | Catch-all 404 page. |
 
 ## Tech stack
 
@@ -20,6 +21,7 @@ A single-page React application built with **Vite**. Paste any URL or landing-pa
 - **Vite 5** — dev server & production bundler (JSX compiled at build time)
 - **Tailwind CSS 3** — compiled via PostCSS (no CDN)
 - **lucide-react** — icon components (no global `lucide.createIcons()` DOM scan)
+- **react-router-dom 6** — real URL routing (`/app`, `/history`, `/compare/:slug`)
 - **Vercel serverless function** — `api/audit.js` fetches and analyses the target page server-side
 
 ## Getting started
@@ -45,16 +47,17 @@ npm run preview    # serve the production build locally (http://localhost:4173)
 ├── public/
 │   └── favicon.svg
 └── src/
-    ├── main.jsx             # React root
-    ├── App.jsx              # route state, audit orchestration, layout shell
+    ├── main.jsx             # React root (BrowserRouter)
+    ├── App.jsx              # <Routes> table, audit orchestration, layout shell
     ├── index.css            # Tailwind directives + glass/glow utilities
     ├── icons.js             # lucide-react icon registry (keyed by legacy names)
     ├── lib/
     │   └── auditClient.js   # calls /api/audit; seeded demo fallback
     ├── components/
     │   ├── Icon.jsx         # <Icon name="sparkles" /> wrapper
-    │   ├── Header.jsx
+    │   ├── Header.jsx       # NavLink navigation
     │   ├── Footer.jsx
+    │   ├── ScrollToTop.jsx  # scroll-to-top on route change
     │   └── AiFixModal.jsx
     ├── hooks/
     │   └── useSchema.js     # JSON-LD structured data injection
@@ -66,7 +69,8 @@ npm run preview    # serve the production build locally (http://localhost:4173)
         ├── AuditDashboard.jsx
         ├── HistoryDashboard.jsx
         ├── CompareHub.jsx
-        └── CompareDetail.jsx
+        ├── CompareDetail.jsx
+        └── NotFound.jsx     # catch-all 404
 ```
 
 ## Deployment
@@ -109,8 +113,9 @@ page too large.
   seed-based engine is preserved in `src/lib/auditClient.js` as an offline
   fallback (used when the backend is unreachable, e.g. plain `vite dev`), and the
   seeded `stripe.com` / `linear.app` presets remain available as demo data.
-- Routing is client-side state (the original app used the same approach); the
-  Vercel rewrite keeps deep links working while excluding `/api/*`.
+- Routing uses **react-router-dom** (`BrowserRouter`), so `/app`, `/history` and
+  `/compare/:slug` are real, shareable deep links. The Vercel rewrite serves
+  `index.html` for any non-`/api/*` path, so a hard refresh on a deep link works.
 
 ## License
 

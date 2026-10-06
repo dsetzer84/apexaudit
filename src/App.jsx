@@ -1,21 +1,24 @@
 import { useState } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import AiFixModal from './components/AiFixModal.jsx';
+import ScrollToTop from './components/ScrollToTop.jsx';
 
 import LandingPage from './pages/LandingPage.jsx';
 import AuditDashboard from './pages/AuditDashboard.jsx';
 import HistoryDashboard from './pages/HistoryDashboard.jsx';
 import CompareHub from './pages/CompareHub.jsx';
 import CompareDetail from './pages/CompareDetail.jsx';
+import NotFound from './pages/NotFound.jsx';
 
 import { runAudit, fallbackAudit } from './lib/auditClient.js';
 import { useSchema } from './hooks/useSchema.js';
 
 export default function App() {
-  const [currentRoute, setCurrentRoute] = useState('landing');
-  const [routeParam, setRouteParam] = useState(null);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   // Audit State
   const [targetUrl, setTargetUrl] = useState('');
@@ -23,13 +26,6 @@ export default function App() {
   const [scanStep, setScanStep] = useState('');
   const [activeAudit, setActiveAudit] = useState(null);
   const [aiFixModal, setAiFixModal] = useState(null);
-
-  // Simple Client Router
-  const navigate = (route, param = null) => {
-    window.scrollTo(0, 0);
-    setCurrentRoute(route);
-    setRouteParam(param);
-  };
 
   // Progress animation shown while the backend audit is in flight.
   const runScanAnimation = () =>
@@ -77,51 +73,56 @@ export default function App() {
 
     setIsScanning(false);
     setActiveAudit(resultData);
-    navigate('app');
+    navigate('/app');
   };
 
-  // Schema Injection Effect (Product + FAQPage + BreadcrumbList JSON-LD)
-  useSchema(currentRoute, routeParam);
+  // Schema Injection Effect (Product + FAQPage + BreadcrumbList JSON-LD),
+  // derived from the current route so breadcrumbs always match the URL.
+  useSchema(pathname);
 
   return (
     <div className="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-black">
-      <Header currentRoute={currentRoute} navigate={navigate} />
+      <ScrollToTop />
+      <Header />
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1">
-        {currentRoute === 'landing' && (
-          <LandingPage
-            handleRunAudit={handleRunAudit}
-            targetUrl={targetUrl}
-            setTargetUrl={setTargetUrl}
-            isScanning={isScanning}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <LandingPage
+                handleRunAudit={handleRunAudit}
+                targetUrl={targetUrl}
+                setTargetUrl={setTargetUrl}
+                isScanning={isScanning}
+              />
+            }
           />
-        )}
-
-        {currentRoute === 'app' && (
-          <AuditDashboard
-            activeAudit={activeAudit}
-            isScanning={isScanning}
-            scanStep={scanStep}
-            targetUrl={targetUrl}
-            setTargetUrl={setTargetUrl}
-            handleRunAudit={handleRunAudit}
-            setAiFixModal={setAiFixModal}
+          <Route
+            path="/app"
+            element={
+              <AuditDashboard
+                activeAudit={activeAudit}
+                isScanning={isScanning}
+                scanStep={scanStep}
+                targetUrl={targetUrl}
+                setTargetUrl={setTargetUrl}
+                handleRunAudit={handleRunAudit}
+                setAiFixModal={setAiFixModal}
+              />
+            }
           />
-        )}
-
-        {currentRoute === 'history' && <HistoryDashboard handleRunAudit={handleRunAudit} />}
-
-        {currentRoute === 'compare-hub' && <CompareHub navigate={navigate} />}
-
-        {currentRoute === 'compare-detail' && routeParam && (
-          <CompareDetail routeParam={routeParam} navigate={navigate} />
-        )}
+          <Route path="/history" element={<HistoryDashboard handleRunAudit={handleRunAudit} />} />
+          <Route path="/compare" element={<CompareHub />} />
+          <Route path="/compare/:slug" element={<CompareDetail />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </main>
 
       <AiFixModal aiFixModal={aiFixModal} setAiFixModal={setAiFixModal} />
 
-      <Footer navigate={navigate} />
+      <Footer />
     </div>
   );
 }
