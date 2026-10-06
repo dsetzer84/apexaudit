@@ -119,7 +119,8 @@ jobs:
           fi
 
           if [ -n "${VERCEL_ORG_ID:-}" ] && [ -n "${VERCEL_PROJECT_ID:-}" ]; then
-            echo "Prebuilt flow: VERCEL_ORG_ID + VERCEL_PROJECT_ID are set."
+            FLOW="prebuilt"
+            echo "::notice title=Vercel prebuilt flow::VERCEL_ORG_ID + VERCEL_PROJECT_ID are set - using vercel pull -> vercel build --prod -> vercel deploy --prebuilt --prod."
             vercel pull --yes --environment=production --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}"
             vercel build --prod --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}"
             set +e
@@ -127,7 +128,8 @@ jobs:
             code=$?
             set -e
           else
-            echo "VERCEL_ORG_ID/VERCEL_PROJECT_ID not set - using the remote build pinned to project 'apexaudit-ai'."
+            FLOW="remote-build"
+            echo "::notice title=Vercel remote-build fallback::VERCEL_ORG_ID and/or VERCEL_PROJECT_ID are not set, so the prebuilt flow is unavailable. Falling back to a remote build pinned to project 'apexaudit-ai'. To switch to the prebuilt flow, add BOTH as repository secrets or variables (Settings -> Secrets and variables -> Actions): VERCEL_ORG_ID and VERCEL_PROJECT_ID. Get them from the Vercel dashboard (Project Settings -> General -> Project ID; Team Settings -> Team ID) or from .vercel/project.json after running 'vercel link'."
             set +e
             url="$(vercel deploy --prod --yes --project apexaudit-ai --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}" 2>&1)"
             code=$?
@@ -141,10 +143,13 @@ jobs:
             exit "$code"
           fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
+          echo "Deployment URL: $url"
           {
             echo "### Deployed to production :rocket:"
             echo ""
-            echo "$url"
+            echo "- Flow: \`$FLOW\`"
+            echo "- URL: $url"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # On failure, publish the CLI output back to the repo so the run can be

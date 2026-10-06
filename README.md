@@ -80,14 +80,19 @@ The repo ships a `vercel.json` configured for Vite (`outputDirectory: dist`, SPA
 
 ### Automatic deploys (GitHub Actions)
 
-`.github/workflows/deploy.yml` deploys to Vercel production on every push to `main`
-(and on manual dispatch). It needs **one** repository secret:
+`.github/workflows/build.yml` has a `deploy` job that runs **only after the
+`build` job succeeds** and **only on `main`** (never on pull requests). It needs
+**one** repository secret:
 
-| Secret | Required | Where to get it |
+| Name | Required | Where to get it |
 | --- | --- | --- |
 | `VERCEL_TOKEN` | yes | <https://vercel.com/account/tokens> |
-| `VERCEL_ORG_ID` | only for team scopes | `vercel link` -> `.vercel/project.json` |
+| `VERCEL_ORG_ID` | for the prebuilt flow / team scopes | Vercel → Team Settings → Team ID, or `.vercel/project.json` (`orgId`) |
+| `VERCEL_PROJECT_ID` | for the prebuilt flow | Vercel → Project Settings → General → Project ID, or `.vercel/project.json` (`projectId`) |
 
+When **both** IDs are set the job uses Vercel's **prebuilt flow**
+(`vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`);
+otherwise it falls back to a remote build pinned to project `apexaudit-ai`.
 The project name is pinned to `apexaudit-ai`, so the production URL is
 <https://apexaudit-ai.vercel.app>. Until `VERCEL_TOKEN` is set the job skips
 cleanly (it does not fail CI).

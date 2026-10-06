@@ -51,20 +51,42 @@ vercel --prod
 
 ## Option C — Automatic deploys from GitHub Actions (recommended)
 
-`.github/workflows/deploy.yml` deploys to production on every push to `main`.
-It is **inert until you add the secrets** — without them the job skips cleanly
-instead of failing.
+`.github/workflows/build.yml` has a `deploy` job that runs **only after the
+`build` job succeeds** and **only on `main`** (never on pull requests). It is
+**inert until you add the secrets** — without them the job skips cleanly instead
+of failing CI.
 
-Add these under **Settings → Secrets and variables → Actions**:
+Add these under **Settings → Secrets and variables → Actions** (a repository
+**variable** of the same name also works — the workflow reads
+`secrets.X || vars.X`):
 
-| Secret | Where to get it |
-| --- | --- |
-| `VERCEL_TOKEN` | <https://vercel.com/account/tokens> → Create Token |
-| `VERCEL_ORG_ID` | run `vercel link`, then read `.vercel/project.json` |
-| `VERCEL_PROJECT_ID` | same file, `projectId` field |
+| Name | Required | Where to get it |
+| --- | --- | --- |
+| `VERCEL_TOKEN` | yes | <https://vercel.com/account/tokens> → Create Token |
+| `VERCEL_ORG_ID` | for the prebuilt flow / team scope | Vercel dashboard → **Team Settings → Team ID**, or the `orgId` field in `.vercel/project.json` after `vercel link` |
+| `VERCEL_PROJECT_ID` | for the prebuilt flow | Vercel dashboard → **Project Settings → General → Project ID**, or the `projectId` field in `.vercel/project.json` |
+
+### Two deploy flows
+
+The job picks the flow automatically:
+
+- **Prebuilt flow (preferred)** — used when **both** `VERCEL_ORG_ID` and
+  `VERCEL_PROJECT_ID` are set:
+  ```bash
+  vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+  vercel build --prod --token="$VERCEL_TOKEN"
+  vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
+  ```
+  The build happens in CI and only the prebuilt output is uploaded, so the
+  deployed artifact is exactly what CI verified.
+- **Remote-build fallback** — used when the two IDs are absent: a remote build
+  pinned to project `apexaudit-ai` (`vercel deploy --prod --yes --project
+  apexaudit-ai`). The run emits a `::notice` telling you to add the two IDs to
+  switch to the prebuilt flow.
 
 Once `VERCEL_TOKEN` is present, the next push to `main` (or a manual
-**Run workflow**) builds and deploys automatically.
+**Run workflow**) builds and deploys automatically. The deployment URL is
+printed in the job log and in the run's **Summary**.
 
 ## Verify after deploying
 
