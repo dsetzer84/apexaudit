@@ -1,15 +1,24 @@
 {
-  "name": "apexaudit",
-  "version": "1.0.0",
+  "name": "apexaudit-ai",
   "private": true,
-  "description": "ApexAudit AI - audit a website's SEO, speed, UX and copy in seconds, then let AI rewrite the weak spots.",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Audit your website's SEO, speed, UX, and copy in seconds - then let AI rewrite the weak spots for you.",
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "start": "node scripts/serve.mjs",
-    "dev": "node scripts/serve.mjs",
-    "lint": "node --check scripts/build.mjs && node --check scripts/serve.mjs"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "engines": {
-    "node": ">=18.17.0"
+  "dependencies": {
+    "lucide-react": "^0.462.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "vite": "^5.4.11"
   }
 }
