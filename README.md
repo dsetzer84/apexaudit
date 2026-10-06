@@ -76,7 +76,29 @@ npm run preview    # serve the production build locally (http://localhost:4173)
 
 ## Deployment
 
-The repo ships a `vercel.json` configured for Vite (`outputDirectory: dist`, SPA rewrites). Push to `main` and import the repo into Vercel, or run `vercel` locally.
+The repo ships a `vercel.json` configured for Vite (`outputDirectory: dist`, SPA rewrites).
+
+### Automatic deploys (GitHub Actions)
+
+`.github/workflows/deploy.yml` deploys to Vercel production on every push to `main`
+(and on manual dispatch). It needs **one** repository secret:
+
+| Secret | Required | Where to get it |
+| --- | --- | --- |
+| `VERCEL_TOKEN` | yes | <https://vercel.com/account/tokens> |
+| `VERCEL_ORG_ID` | only for team scopes | `vercel link` -> `.vercel/project.json` |
+
+The project name is pinned to `apexaudit-ai`, so the production URL is
+<https://apexaudit-ai.vercel.app>. Until `VERCEL_TOKEN` is set the job skips
+cleanly (it does not fail CI).
+
+### Manual deploy
+
+```bash
+npm i -g vercel@latest
+vercel login
+vercel deploy --prod --yes --project apexaudit-ai
+```
 
 ## Audit backend (`/api/audit`)
 
