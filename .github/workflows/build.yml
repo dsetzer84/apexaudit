@@ -122,7 +122,7 @@ jobs:
             echo "vercel whoami (exit $code)"
             printf '%s\n' "$out"
             echo "---"
-          } > /tmp/vercel-deploy.log
+          } > /tmp/vercel-whoami.log
           printf '%s\n' "$out"
           if [ "$code" -ne 0 ]; then
             echo "::warning title=Vercel token rejected by CLI::'vercel whoami' exited $code. The deploy step still runs; if it fails, the full CLI output is published to .deploy-status.json."
@@ -178,10 +178,11 @@ jobs:
           set -uo pipefail
           python3 - <<'PY' > .deploy-status.json
           import json, os
-          try:
-              out = open('/tmp/vercel-deploy.log').read()[-3000:]
-          except Exception:
-              out = 'no log captured'
+          def read(path):
+              try:
+                  return open(path).read()[-3000:]
+              except Exception:
+                  return 'no log captured'
           print(json.dumps({
               "status": "failed",
               "run": os.environ.get("RUN_URL", ""),
@@ -192,7 +193,8 @@ jobs:
                   "VERCEL_ORG_ID": bool(os.environ.get("VERCEL_ORG_ID", "")),
                   "VERCEL_PROJECT_ID": bool(os.environ.get("VERCEL_PROJECT_ID", "")),
               },
-              "output": out,
+              "whoami": read('/tmp/vercel-whoami.log'),
+              "deploy": read('/tmp/vercel-deploy.log'),
           }, indent=2))
           PY
           git config user.name "github-actions[bot]"
