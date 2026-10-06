@@ -1,19 +1,21 @@
+import { Link, useParams } from 'react-router-dom';
 import { COMPETITORS } from '../data/competitors.js';
 
-export default function CompareDetail({ routeParam, navigate }) {
-  const comp = COMPETITORS.find((c) => c.slug === routeParam) || COMPETITORS[0];
+export default function CompareDetail() {
+  const { slug } = useParams();
+  const comp = COMPETITORS.find((c) => c.slug === slug) || COMPETITORS[0];
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       {/* Breadcrumbs */}
       <div className="flex items-center space-x-2 text-xs text-zinc-500 mb-6">
-        <button onClick={() => navigate('landing')} className="hover:text-white">
+        <Link to="/" className="hover:text-white">
           Home
-        </button>
+        </Link>
         <span>/</span>
-        <button onClick={() => navigate('compare-hub')} className="hover:text-white">
+        <Link to="/compare" className="hover:text-white">
           Comparisons
-        </button>
+        </Link>
         <span>/</span>
         <span className="text-zinc-300">ApexAudit vs {comp.name}</span>
       </div>
@@ -89,12 +91,12 @@ export default function CompareDetail({ routeParam, navigate }) {
         <p className="text-zinc-400 text-sm mb-6 max-w-lg mx-auto">
           Try ApexAudit AI today and fix your headline copy and technical SEO issues in minutes.
         </p>
-        <button
-          onClick={() => navigate('app')}
-          className="px-6 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-zinc-950 font-bold text-sm glow-emerald transition"
+        <Link
+          to="/app"
+          className="inline-block px-6 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-zinc-950 font-bold text-sm glow-emerald transition"
         >
           Start Free Audit
-        </button>
+        </Link>
       </div>
     </div>
   );

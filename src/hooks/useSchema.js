@@ -5,12 +5,16 @@ import { COMPETITORS } from '../data/competitors.js';
  * Injects JSON-LD structured data (@graph of Product + FAQPage + BreadcrumbList)
  * into <head> whenever a competitor detail page is active.
  *
- * Ported verbatim from the original in-app `useEffect` schema injection.
+ * The route is derived from the current pathname (react-router `useLocation`),
+ * so the BreadcrumbList always reflects the URL the visitor is actually on.
  */
-export function useSchema(route, routeParam) {
+export function useSchema(pathname) {
   useEffect(() => {
-    if (route === 'compare-detail' && routeParam) {
-      const comp = COMPETITORS.find((c) => c.slug === routeParam);
+    const match = /^\/compare\/([^/]+)\/?$/.exec(pathname || '');
+    const slug = match ? match[1] : null;
+
+    if (slug) {
+      const comp = COMPETITORS.find((c) => c.slug === slug);
       if (comp) {
         const schemaData = {
           '@context': 'https://schema.org',
@@ -72,7 +76,7 @@ export function useSchema(route, routeParam) {
         script.textContent = JSON.stringify(schemaData);
       }
     }
-  }, [route, routeParam]);
+  }, [pathname]);
 }
 
 export default useSchema;

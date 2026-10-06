@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import { COMPETITORS } from '../data/competitors.js';
 
-export default function CompareHub({ navigate }) {
+export default function CompareHub() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
       <div className="text-center max-w-2xl mx-auto mb-12">
@@ -24,13 +25,13 @@ export default function CompareHub({ navigate }) {
               <p className="text-xs text-zinc-400 mb-6 leading-relaxed">{comp.tagline}</p>
             </div>
 
-            <button
-              onClick={() => navigate('compare-detail', comp.slug)}
+            <Link
+              to={`/compare/${comp.slug}`}
               className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs border border-zinc-800 transition flex items-center justify-center space-x-2"
             >
               <span>View Full Matrix</span>
               <Icon name="arrow-right" className="w-3.5 h-3.5" />
-            </button>
+            </Link>
           </div>
         ))}
       </div>
