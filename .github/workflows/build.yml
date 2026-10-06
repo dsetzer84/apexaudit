@@ -51,31 +51,28 @@ jobs:
   # main (never for pull requests). This is the single source of truth for
   # deploys - there is no separate deploy workflow.
   #
-  # The token may be supplied EITHER as a repository secret or as a repository
-  # variable (Settings -> Secrets and variables -> Actions):
+  # Requires ONE repository secret (Settings -> Secrets and variables -> Actions):
   #   VERCEL_TOKEN      - a Vercel access token (https://vercel.com/account/tokens)
-  #   VERCEL_ORG_ID     - optional; only needed for the prebuilt flow / team scope
-  #   VERCEL_PROJECT_ID - optional; only needed for the prebuilt flow
+  # Optional (needed for the prebuilt flow / team scope):
+  #   VERCEL_ORG_ID     - team/org id, passed to the CLI as `--scope`
+  #   VERCEL_PROJECT_ID - project id
   #
   # The project name is pinned to `apexaudit-ai`, so the production URL is
   # https://apexaudit-ai.vercel.app. Vercel builds with the settings in
   # vercel.json (framework: vite, buildCommand: npm run build,
   # outputDirectory: dist) and deploys api/audit.js as a serverless function.
   #
-  # Until a token is visible to the job, it skips cleanly (it does NOT fail CI)
-  # and emits a warning annotation explaining exactly what to check.
+  # Until VERCEL_TOKEN is set, the job skips cleanly (it does NOT fail CI).
   deploy:
     name: Deploy to Vercel (production)
     needs: build
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Declaring an environment makes environment-scoped secrets visible too.
-    # Repo-level secrets/variables remain available either way.
-    environment: production
     # The failure-diagnostics step commits a status file back to the repo.
     permissions:
       contents: write
+    # The token may be supplied as a repository SECRET or a repository VARIABLE.
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN || vars.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID || vars.VERCEL_ORG_ID }}
@@ -89,7 +86,7 @@ jobs:
             echo "::notice title=Vercel token found::A Vercel token is visible to this job; deploying."
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Vercel deploy skipped::No VERCEL_TOKEN is visible to this workflow. Add it as a REPOSITORY secret (Settings -> Secrets and variables -> Actions -> Secrets) named exactly VERCEL_TOKEN. A repository VARIABLE of the same name is also accepted. Environment secrets only work for the environment the job declares (this job declares 'production')."
+            echo "::warning title=Vercel deploy skipped::No VERCEL_TOKEN is visible to this workflow. Add it as a REPOSITORY secret (Settings -> Secrets and variables -> Actions -> Secrets) named exactly VERCEL_TOKEN. A repository VARIABLE of the same name is also accepted. Environment secrets only work for the environment the job declares (this job declares none)."
           fi
 
       - name: Checkout
