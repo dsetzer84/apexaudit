@@ -14,7 +14,8 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, normalize } from 'node:path';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Serve the compiled Vite output (run `npm run build` first).
+const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const port = Number(process.argv[2] || process.env.PORT || 3000);
 
 const MIME = {

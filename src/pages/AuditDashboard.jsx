@@ -19,6 +19,22 @@ export default function AuditDashboard({
           <span className="text-sm font-mono bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-800 text-brand-500 font-bold">
             {activeAudit ? activeAudit.url : 'No site loaded'}
           </span>
+          {activeAudit?.source && (
+            <span
+              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                activeAudit.source === 'live'
+                  ? 'bg-brand-500/10 text-brand-500 border-brand-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+              }`}
+              title={
+                activeAudit.source === 'live'
+                  ? 'Live audit — fetched and analysed server-side'
+                  : `Demo data${activeAudit.fallbackReason ? ` (${activeAudit.fallbackReason})` : ''}`
+              }
+            >
+              {activeAudit.source === 'live' ? 'Live' : 'Demo'}
+            </span>
+          )}
         </div>
 
         <form onSubmit={handleRunAudit} className="flex items-center space-x-2 w-full md:w-auto">
