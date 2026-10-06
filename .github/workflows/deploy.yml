@@ -2,10 +2,16 @@ name: Deploy to Vercel
 
 # Deploys the ApexAudit Vite build to Vercel production on every push to main.
 #
-# Requires three repository secrets (Settings -> Secrets and variables -> Actions):
-#   VERCEL_TOKEN       - a Vercel access token (vercel.com/account/tokens)
-#   VERCEL_ORG_ID      - from `vercel link` -> .vercel/project.json
-#   VERCEL_PROJECT_ID  - from `vercel link` -> .vercel/project.json
+# Requires ONE repository secret (Settings -> Secrets and variables -> Actions):
+#   VERCEL_TOKEN   - a Vercel access token (https://vercel.com/account/tokens)
+#
+# Optional (only needed when the project lives in a team scope):
+#   VERCEL_ORG_ID  - the team/org id, passed to the CLI as `--scope`
+#
+# The project name is pinned to `apexaudit-ai`, so the production URL is
+# https://apexaudit-ai.vercel.app. Vercel builds the project remotely using the
+# settings in vercel.json (framework: vite, buildCommand: npm run build,
+# outputDirectory: dist) and deploys api/audit.js as a serverless function.
 #
 # Until VERCEL_TOKEN is set, the job skips cleanly (it does NOT fail CI).
 
@@ -17,6 +23,9 @@ on:
 concurrency:
   group: vercel-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   deploy:
@@ -48,29 +57,58 @@ jobs:
         if: steps.check.outputs.ready == 'true'
         run: npm install --global vercel@latest
 
-      - name: Pull Vercel environment
-        if: steps.check.outputs.ready == 'true'
-        run: vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Build (Vercel)
-        if: steps.check.outputs.ready == 'true'
-        run: vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
       - name: Deploy to production
         if: steps.check.outputs.ready == 'true'
         id: deploy
-        run: |
-          url="$(vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}")"
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "### Deployed to production :rocket:" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "$url" >> "$GITHUB_STEP_SUMMARY"
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -uo pipefail
+          SCOPE_ARGS=()
+          if [ -n "${VERCEL_ORG_ID:-}" ]; then
+            SCOPE_ARGS+=(--scope "$VERCEL_ORG_ID")
+          fi
+          set +e
+          url="$(vercel deploy --prod --yes --project apexaudit-ai "${SCOPE_ARGS[@]}" --token="$VERCEL_TOKEN" 2>&1)"
+          code=$?
+          set -e
+          printf '%s\n' "$url" > /tmp/vercel-deploy.log
+          if [ "$code" -ne 0 ]; then
+            echo "::error title=Vercel deploy failed::exit $code"
+            printf '%s\n' "$url" | tail -40
+            exit "$code"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Deployed to production :rocket:"
+            echo ""
+            echo "$url"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # On failure, publish the CLI output back to the repo so the run can be
+      # diagnosed without dashboard access to the Actions logs.
+      - name: Publish failure status
+        if: failure() && steps.check.outputs.ready == 'true'
+        run: |
+          set -uo pipefail
+          python3 - <<'PY' > .deploy-status.json
+          import json, os
+          try:
+              out = open('/tmp/vercel-deploy.log').read()[-3000:]
+          except Exception:
+              out = 'no log captured'
+          print(json.dumps({
+              "status": "failed",
+              "run": os.environ.get("RUN_URL", ""),
+              "sha": os.environ.get("GITHUB_SHA", ""),
+              "output": out,
+          }, indent=2))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .deploy-status.json
+          git commit -m "chore: record failed Vercel deploy [skip ci]" || true
+          git push || true
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
