@@ -109,9 +109,24 @@ jobs:
         if: steps.check.outputs.ready == 'true'
         run: npm install --global vercel@latest
 
-      - name: Verify token
+      # Non-fatal: if the token is rejected we want the DEPLOY step to run
+      # anyway so the real CLI error is captured (and published) instead of a
+      # bare `vercel whoami` failure that leaves no diagnostics behind.
+      - name: Verify token (non-fatal)
         if: steps.check.outputs.ready == 'true'
-        run: vercel whoami --token="$VERCEL_TOKEN"
+        run: |
+          set -uo pipefail
+          code=0
+          out="$(vercel whoami --token="$VERCEL_TOKEN" 2>&1)" || code=$?
+          {
+            echo "vercel whoami (exit $code)"
+            printf '%s\n' "$out"
+            echo "---"
+          } > /tmp/vercel-deploy.log
+          printf '%s\n' "$out"
+          if [ "$code" -ne 0 ]; then
+            echo "::warning title=Vercel token rejected by CLI::'vercel whoami' exited $code. The deploy step still runs; if it fails, the full CLI output is published to .deploy-status.json."
+          fi
 
       - name: Deploy to production
         if: steps.check.outputs.ready == 'true'
@@ -171,6 +186,12 @@ jobs:
               "status": "failed",
               "run": os.environ.get("RUN_URL", ""),
               "sha": os.environ.get("GITHUB_SHA", ""),
+              "ref": os.environ.get("GITHUB_REF", ""),
+              "event": os.environ.get("GITHUB_EVENT_NAME", ""),
+              "also_present": {
+                  "VERCEL_ORG_ID": bool(os.environ.get("VERCEL_ORG_ID", "")),
+                  "VERCEL_PROJECT_ID": bool(os.environ.get("VERCEL_PROJECT_ID", "")),
+              },
               "output": out,
           }, indent=2))
           PY
