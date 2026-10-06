@@ -69,6 +69,11 @@ jobs:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Consumed by the `smoke` job: `ready` says whether a token was visible
+    # (i.e. whether a deploy was attempted), `url` is the deployment URL.
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+      url: ${{ steps.deploy.outputs.url }}
     # The failure-diagnostics step commits a status file back to the repo.
     permissions:
       contents: write
@@ -119,8 +124,7 @@ jobs:
           fi
 
           if [ -n "${VERCEL_ORG_ID:-}" ] && [ -n "${VERCEL_PROJECT_ID:-}" ]; then
-            FLOW="prebuilt"
-            echo "::notice title=Vercel prebuilt flow::VERCEL_ORG_ID + VERCEL_PROJECT_ID are set - using vercel pull -> vercel build --prod -> vercel deploy --prebuilt --prod."
+            echo "Prebuilt flow: VERCEL_ORG_ID + VERCEL_PROJECT_ID are set."
             vercel pull --yes --environment=production --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}"
             vercel build --prod --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}"
             set +e
@@ -128,8 +132,7 @@ jobs:
             code=$?
             set -e
           else
-            FLOW="remote-build"
-            echo "::notice title=Vercel remote-build fallback::VERCEL_ORG_ID and/or VERCEL_PROJECT_ID are not set, so the prebuilt flow is unavailable. Falling back to a remote build pinned to project 'apexaudit-ai'. To switch to the prebuilt flow, add BOTH as repository secrets or variables (Settings -> Secrets and variables -> Actions): VERCEL_ORG_ID and VERCEL_PROJECT_ID. Get them from the Vercel dashboard (Project Settings -> General -> Project ID; Team Settings -> Team ID) or from .vercel/project.json after running 'vercel link'."
+            echo "VERCEL_ORG_ID/VERCEL_PROJECT_ID not set - using the remote build pinned to project 'apexaudit-ai'."
             set +e
             url="$(vercel deploy --prod --yes --project apexaudit-ai --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}" 2>&1)"
             code=$?
@@ -142,14 +145,14 @@ jobs:
             printf '%s\n' "$url" | tail -40
             exit "$code"
           fi
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
-          echo "Deployment URL: $url"
+          # The CLI prints progress plus the final URL; keep only the last
+          # https:// line so the job output is a single clean value.
+          deploy_url="$(printf '%s\n' "$url" | grep -oE 'https://[^[:space:]]+' | tail -1 || true)"
+          echo "url=$deploy_url" >> "$GITHUB_OUTPUT"
           {
             echo "### Deployed to production :rocket:"
             echo ""
-            echo "- Flow: \`$FLOW\`"
-            echo "- URL: $url"
+            echo "$deploy_url"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # On failure, publish the CLI output back to the repo so the run can be
@@ -178,3 +181,79 @@ jobs:
           git push || true
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  # Post-deploy smoke test. Runs ONLY after the deploy job succeeds. Curls the
+  # key production routes and FAILS the job on any non-200 response, retrying
+  # with a short backoff to allow for Vercel propagation delay. When the deploy
+  # was skipped because no Vercel token was visible, this job warns and exits
+  # cleanly - it never fails CI for a deployment that did not happen.
+  smoke:
+    name: Smoke test (production)
+    needs: deploy
+    if: needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check whether a deploy happened
+        id: gate
+        env:
+          READY: ${{ needs.deploy.outputs.ready }}
+        run: |
+          if [ "${READY:-}" = "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Smoke test skipped::The deploy job did not deploy (no Vercel token was visible), so there is nothing to smoke-test."
+          fi
+
+      - name: Smoke test production routes
+        if: steps.gate.outputs.run == 'true'
+        env:
+          DEPLOY_URL: ${{ needs.deploy.outputs.url }}
+        run: |
+          set -uo pipefail
+
+          # Prefer the URL the deploy step captured; fall back to the pinned
+          # production domain. Normalise to a bare origin.
+          BASE="$(printf '%s\n' "${DEPLOY_URL:-}" | grep -oE 'https://[^[:space:]]+' | tail -1 || true)"
+          case "$BASE" in
+            http*) ;;
+            *) BASE="https://apexaudit-ai.vercel.app" ;;
+          esac
+          BASE="${BASE%/}"
+          echo "Smoke-testing $BASE"
+
+          ROUTES=(
+            "/"
+            "/app"
+            "/history"
+            "/compare"
+            "/compare/ahrefs"
+            "/api/audit?url=https://example.com"
+          )
+
+          fail=0
+          for route in "${ROUTES[@]}"; do
+            url="$BASE$route"
+            code=""
+            for attempt in 1 2 3 4 5; do
+              code="$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 20 "$url" || echo 000)"
+              if [ "$code" = "200" ]; then
+                break
+              fi
+              echo "  attempt $attempt: $url -> $code (retrying in 5s)"
+              sleep 5
+            done
+            if [ "$code" = "200" ]; then
+              echo "OK   $code  $url"
+            else
+              echo "FAIL $code  $url"
+              fail=1
+            fi
+          done
+
+          if [ "$fail" -ne 0 ]; then
+            echo "::error title=Smoke test failed::One or more production routes did not return HTTP 200."
+            exit 1
+          fi
+          echo "All production routes returned HTTP 200."
