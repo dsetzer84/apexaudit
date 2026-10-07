@@ -1,13 +1,13 @@
 {
   "status": "failed",
-  "run": "https://github.com/dsetzer84/apexaudit/actions/runs/37412113244",
-  "sha": "fe6308d39a205a779f1824441a51324fa5632bdf",
+  "run": "https://github.com/dsetzer84/apexaudit/actions/runs/37589090458",
+  "sha": "f79aa39548610816e587342b3c68e474baeaa7ed",
   "ref": "refs/heads/main",
   "event": "push",
   "also_present": {
     "VERCEL_ORG_ID": false,
     "VERCEL_PROJECT_ID": false
   },
-  "whoami": "vercel whoami (exit 1)\nVercel CLI 62.4.0 (Node.js 20.20.2)\n> NOTE: The Vercel CLI now collects telemetry regarding usage of the CLI.\n> This information is used to shape the CLI roadmap and prioritize features.\n> You can learn more, including how to opt-out if you'd not like to participate in this program, by visiting the following URL:\n> https://vercel.com/docs/cli/about-telemetry\nError: The token provided via `--token` argument is not valid. Please provide a valid token.\n---\n",
-  "deploy": "Vercel CLI 62.4.0 (Node.js 20.20.2)\nError: Not authorized\n"
+  "whoami": "vercel whoami (exit 1)\nVercel CLI 62.7.0 (Node.js 20.20.2)\n> NOTE: The Vercel CLI now collects telemetry regarding usage of the CLI.\n> This information is used to shape the CLI roadmap and prioritize features.\n> You can learn more, including how to opt-out if you'd not like to participate in this program, by visiting the following URL:\n> https://vercel.com/docs/cli/about-telemetry\nError: The token provided via `--token` argument is not valid. Please provide a valid token.\n---\n",
+  "deploy": "Vercel CLI 62.7.0 (Node.js 20.20.2)\nError: Not authorized\n"
 }
