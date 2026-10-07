@@ -54,7 +54,7 @@ jobs:
   # Requires ONE repository secret (Settings -> Secrets and variables -> Actions):
   #   VERCEL_TOKEN      - a Vercel access token (https://vercel.com/account/tokens)
   # Optional (needed for the prebuilt flow / team scope):
-  #   VERCEL_ORG_ID     - team/org id, passed to the CLI as `--scope`
+  #   VERCEL_ORG_ID     - team/org id (scopes the CLI via the env var)
   #   VERCEL_PROJECT_ID - project id
   #
   # The project name is pinned to `apexaudit-ai`, so the production URL is
@@ -133,23 +133,25 @@ jobs:
         id: deploy
         run: |
           set -uo pipefail
-          SCOPE_ARGS=()
-          if [ -n "${VERCEL_ORG_ID:-}" ]; then
-            SCOPE_ARGS+=(--scope "$VERCEL_ORG_ID")
-          fi
+          # NOTE: do NOT pass `--scope` to the Vercel CLI here. A team-scoped
+          # personal access token (vcp_...) is rejected by the CLI's user-level
+          # preflight (`GET /v2/user` -> 404 "User not found") whenever `--scope`
+          # is supplied, which aborts `vercel pull`/`vercel build`. The
+          # VERCEL_ORG_ID / VERCEL_PROJECT_ID environment variables already scope
+          # every command to the right team + project, so `--scope` is redundant.
 
           if [ -n "${VERCEL_ORG_ID:-}" ] && [ -n "${VERCEL_PROJECT_ID:-}" ]; then
             echo "Prebuilt flow: VERCEL_ORG_ID + VERCEL_PROJECT_ID are set."
-            vercel pull --yes --environment=production --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}"
-            vercel build --prod --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}"
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+            vercel build --prod --token="$VERCEL_TOKEN"
             set +e
-            url="$(vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}" 2>&1)"
+            url="$(vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN" 2>&1)"
             code=$?
             set -e
           else
             echo "VERCEL_ORG_ID/VERCEL_PROJECT_ID not set - using the remote build pinned to project 'apexaudit-ai'."
             set +e
-            url="$(vercel deploy --prod --yes --project apexaudit-ai --token="$VERCEL_TOKEN" "${SCOPE_ARGS[@]}" 2>&1)"
+            url="$(vercel deploy --prod --yes --project apexaudit-ai --token="$VERCEL_TOKEN" 2>&1)"
             code=$?
             set -e
           fi
