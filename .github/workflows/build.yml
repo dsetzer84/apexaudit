@@ -51,18 +51,22 @@ jobs:
   # main (never for pull requests). This is the single source of truth for
   # deploys - there is no separate deploy workflow.
   #
-  # Requires ONE repository secret (Settings -> Secrets and variables -> Actions):
+  # Requires THREE repository secrets (Settings -> Secrets and variables -> Actions):
   #   VERCEL_TOKEN      - a Vercel access token (https://vercel.com/account/tokens)
-  # Optional (needed for the prebuilt flow / team scope):
   #   VERCEL_ORG_ID     - team/org id (scopes the CLI via the env var)
   #   VERCEL_PROJECT_ID - project id
+  # A repository VARIABLE of the same name is also accepted for each.
   #
   # The project name is pinned to `apexaudit-ai`, so the production URL is
   # https://apexaudit-ai.vercel.app. Vercel builds with the settings in
   # vercel.json (framework: vite, buildCommand: npm run build,
   # outputDirectory: dist) and deploys api/audit.js as a serverless function.
   #
-  # Until VERCEL_TOKEN is set, the job skips cleanly (it does NOT fail CI).
+  # Behaviour:
+  #   * No VERCEL_TOKEN visible -> the job skips cleanly (it does NOT fail CI).
+  #   * Token visible but either id missing -> the guard step FAILS the job
+  #     fast with an actionable message (no silent remote-build fallback).
+  #   * Token + both ids present -> the prebuilt flow runs.
   deploy:
     name: Deploy to Vercel (production)
     needs: build
@@ -93,6 +97,41 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Vercel deploy skipped::No VERCEL_TOKEN is visible to this workflow. Add it as a REPOSITORY secret (Settings -> Secrets and variables -> Actions -> Secrets) named exactly VERCEL_TOKEN. A repository VARIABLE of the same name is also accepted. Environment secrets only work for the environment the job declares (this job declares none)."
           fi
+
+      # Fail fast when the two Vercel ids are missing. The prebuilt flow cannot
+      # run without them, and silently falling back to a remote build hides the
+      # misconfiguration - so this guard is the authoritative gate.
+      - name: Guard - require VERCEL_ORG_ID and VERCEL_PROJECT_ID
+        if: steps.check.outputs.ready == 'true'
+        id: guard
+        run: |
+          set -uo pipefail
+          missing=""
+          [ -n "${VERCEL_ORG_ID:-}" ] || missing="${missing} VERCEL_ORG_ID"
+          [ -n "${VERCEL_PROJECT_ID:-}" ] || missing="${missing} VERCEL_PROJECT_ID"
+          if [ -n "$missing" ]; then
+            {
+              echo "Missing Vercel ids:${missing}"
+              echo ""
+              echo "The prebuilt deploy flow (vercel pull -> vercel build --prod ->"
+              echo "vercel deploy --prebuilt --prod) cannot run without BOTH ids, so"
+              echo "this job fails fast instead of silently falling back to a remote"
+              echo "build."
+              echo ""
+              echo "Fix: add them as REPOSITORY secrets (not environment secrets) at"
+              echo "  https://github.com/dsetzer84/apexaudit/settings/secrets/actions"
+              echo ""
+              echo "  VERCEL_ORG_ID     = team_7P3XiCtGMPpsXTcvwYArR9qp"
+              echo "  VERCEL_PROJECT_ID = prj_fdcWMKHKknGHvoH78LeKXsQonCiI"
+              echo ""
+              echo "Common mistake: adding them to the wrong repo"
+              echo "(dsetzer84/ApexAudit-AI instead of dsetzer84/apexaudit)."
+            } | tee /tmp/vercel-guard.log
+            echo "::error title=Missing Vercel ids::Missing:${missing}. Add VERCEL_ORG_ID and VERCEL_PROJECT_ID as REPOSITORY secrets at https://github.com/dsetzer84/apexaudit/settings/secrets/actions (VERCEL_ORG_ID=team_7P3XiCtGMPpsXTcvwYArR9qp, VERCEL_PROJECT_ID=prj_fdcWMKHKknGHvoH78LeKXsQonCiI). Do not add them to dsetzer84/ApexAudit-AI."
+            exit 1
+          fi
+          echo "VERCEL_ORG_ID and VERCEL_PROJECT_ID are set - using the prebuilt flow." | tee /tmp/vercel-guard.log
+          echo "::notice title=Vercel ids present::VERCEL_ORG_ID and VERCEL_PROJECT_ID are set; using the prebuilt flow."
 
       - name: Checkout
         if: steps.check.outputs.ready == 'true'
@@ -139,22 +178,16 @@ jobs:
           # is supplied, which aborts `vercel pull`/`vercel build`. The
           # VERCEL_ORG_ID / VERCEL_PROJECT_ID environment variables already scope
           # every command to the right team + project, so `--scope` is redundant.
-
-          if [ -n "${VERCEL_ORG_ID:-}" ] && [ -n "${VERCEL_PROJECT_ID:-}" ]; then
-            echo "Prebuilt flow: VERCEL_ORG_ID + VERCEL_PROJECT_ID are set."
-            vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-            vercel build --prod --token="$VERCEL_TOKEN"
-            set +e
-            url="$(vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN" 2>&1)"
-            code=$?
-            set -e
-          else
-            echo "VERCEL_ORG_ID/VERCEL_PROJECT_ID not set - using the remote build pinned to project 'apexaudit-ai'."
-            set +e
-            url="$(vercel deploy --prod --yes --project apexaudit-ai --token="$VERCEL_TOKEN" 2>&1)"
-            code=$?
-            set -e
-          fi
+          #
+          # The guard step above guarantees both ids are present, so the prebuilt
+          # flow is the only path - there is no remote-build fallback.
+          echo "Prebuilt flow: VERCEL_ORG_ID + VERCEL_PROJECT_ID are set."
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          set +e
+          url="$(vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN" 2>&1)"
+          code=$?
+          set -e
 
           printf '%s\n' "$url" > /tmp/vercel-deploy.log
           if [ "$code" -ne 0 ]; then
@@ -171,6 +204,12 @@ jobs:
             echo ""
             echo "$deploy_url"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # The guard can fail before the repo is checked out, so make sure a
+      # worktree exists before the diagnostics step tries to commit.
+      - name: Checkout (for failure diagnostics)
+        if: failure() && steps.check.outputs.ready == 'true'
+        uses: actions/checkout@v4
 
       # On failure, publish the CLI output back to the repo so the run can be
       # diagnosed without dashboard access to the Actions logs.
@@ -195,6 +234,7 @@ jobs:
                   "VERCEL_ORG_ID": bool(os.environ.get("VERCEL_ORG_ID", "")),
                   "VERCEL_PROJECT_ID": bool(os.environ.get("VERCEL_PROJECT_ID", "")),
               },
+              "guard": read('/tmp/vercel-guard.log'),
               "whoami": read('/tmp/vercel-whoami.log'),
               "deploy": read('/tmp/vercel-deploy.log'),
           }, indent=2))
