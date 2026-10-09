@@ -1,14 +1,14 @@
 {
   "status": "failed",
-  "run": "https://github.com/dsetzer84/apexaudit/actions/runs/37594267602",
-  "sha": "c055020865f9c3401ec4dde22294330d632b00f0",
+  "run": "https://github.com/dsetzer84/apexaudit/actions/runs/37915222607",
+  "sha": "31187ce2ac4e4824d2d328de2c1b291898e4d50b",
   "ref": "refs/heads/main",
   "event": "push",
   "also_present": {
-    "VERCEL_ORG_ID": false,
-    "VERCEL_PROJECT_ID": false
+    "VERCEL_ORG_ID": true,
+    "VERCEL_PROJECT_ID": true
   },
-  "guard": "Missing Vercel ids: VERCEL_ORG_ID VERCEL_PROJECT_ID\n\nThe prebuilt deploy flow (vercel pull -> vercel build --prod ->\nvercel deploy --prebuilt --prod) cannot run without BOTH ids, so\nthis job fails fast instead of silently falling back to a remote\nbuild.\n\nFix: add them as REPOSITORY secrets (not environment secrets) at\n  https://github.com/dsetzer84/apexaudit/settings/secrets/actions\n\n  VERCEL_ORG_ID     = team_7P3XiCtGMPpsXTcvwYArR9qp\n  VERCEL_PROJECT_ID = prj_fdcWMKHKknGHvoH78LeKXsQonCiI\n\nCommon mistake: adding them to the wrong repo\n(dsetzer84/ApexAudit-AI instead of dsetzer84/apexaudit).\n",
-  "whoami": "no log captured",
+  "guard": "VERCEL_ORG_ID and VERCEL_PROJECT_ID are set - using the prebuilt flow.\n",
+  "whoami": "vercel whoami (exit 1)\nVercel CLI 63.1.0 (Node.js 20.20.2)\n> NOTE: The Vercel CLI now collects telemetry regarding usage of the CLI.\n> This information is used to shape the CLI roadmap and prioritize features.\n> You can learn more, including how to opt-out if you'd not like to participate in this program, by visiting the following URL:\n> https://vercel.com/docs/cli/about-telemetry\nError: The token provided via `--token` argument is not valid. Please provide a valid token.\n---\n",
   "deploy": "no log captured"
 }
